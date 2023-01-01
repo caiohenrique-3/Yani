@@ -9,12 +9,9 @@ import os
 # For playing and loading music.
 import pygame.mixer
 
-# For handling image files
-from PIL import Image
-
 # --> CTK variables
 customtkinter.set_appearance_mode("Dark")       # Modes: "System" (standard), "Dark", "Light"
-customtkinter.set_default_color_theme("green")   # Themes: "blue" (standard), "green", "dark-blue"
+customtkinter.set_default_color_theme("dark-blue")   # Themes: "blue" (standard), "green", "dark-blue"
 
 # -- > Variables
 global folder_path
@@ -70,27 +67,23 @@ status = StringVar(window, "<not available>")
 # -- > Creating the GUI widgets
 frame_1 = customtkinter.CTkFrame(window,width=300,height=240)
 frame_2 = customtkinter.CTkFrame(window, width=370,height=240)
-label_1 = customtkinter.CTkLabel(frame_1,text="Hello! This is a text test",font=("Liberation Serif",11))
-label_2 = customtkinter.CTkLabel(frame_1,text="Hello! This is a text test")
-button = customtkinter.CTkButton(window,text="Click me",command=load_dir)
 
-song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1)
-
-playlist = Listbox(frame_2, font=('Liberation Serif', 11),width=50,height=50,background="#2e3038",highlightcolor="#3c3d45")
+song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=("Liberation Serif", 11))
+playlist = Listbox(frame_2, font=('Liberation Serif', 12),width=50,height=160,background="#2e3038",highlightcolor="#3c3d45",selectbackground="#3c3d45",highlightthickness=0.5)
+playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
+playlist.configure(yscrollcommand=playlist_scroll_bar.set)
+playlist_scroll_bar.configure(command=playlist.yview)
 
 # -- > Packing everything
 frame_1.pack_propagate(False) 
 frame_1.place(x=10,y=10)
-#label_1.pack()
-#label_2.pack()
 
 frame_2.pack_propagate(False)
 frame_2.place(x=320,y=10)
-song_search.pack(padx=5)
-playlist.pack(pady=10)
 
-
-#button.pack()
+song_search.pack(padx=0,fill=BOTH)
+playlist.pack(fill=BOTH,pady=0,expand=TRUE)
+playlist_scroll_bar.pack(side=RIGHT,fill=BOTH)
 
 # The End
 window.update()
