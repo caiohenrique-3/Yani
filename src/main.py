@@ -18,30 +18,26 @@ customtkinter.set_appearance_mode("Dark")       # Modes: "System" (standard), "D
 customtkinter.set_default_color_theme("blue")   # Themes: "blue" (standard), "green", "dark-blue"
 
 # -- > Variables
-global folder_path
-folder_path = ""    # Folder where the playlist is
-
-global file_path
-file_path = ""      # Folder where the single filer is
-
 is_playing = False
-is_paused = True
+is_paused = False
 is_stopped = True
 # ------------------------------------------------------------- # FUNCTIONS # -------------------------------------------------------------#
-
 def load_dir():
     global playlist
     os.chdir(filedialog.askdirectory(title="Select a folder",initialdir="~\Music"))
     tracks = os.listdir()
     for track in tracks:
-        playlist.insert(END,os.path.abspath(track))
+        if track.endswith(".mp3" or ".wav" or ".ogg"):
+            playlist.insert(END,os.path.abspath(track))
+    update_playlist()
 
 def load_file():
     global playlist
     track = filedialog.askopenfilename(title="Select a song",filetypes=[("MP3", ".mp3"),
                                         ("OGG", ".ogg"), ("XM", ".xm"), ("MOD", ".mod"), ("WAV", ".wav")], initialdir="~\Music")
-    os.chdir(os.path.dirname(track))
-    playlist.insert(END,(track))
+    #os.chdir(os.path.dirname(track))
+    playlist.insert(END,os.path.abspath(track)) # Added abspath for uniform looking paths in the GUI.
+    update_playlist()
 
 def remove_all():
     global playlist
@@ -57,21 +53,24 @@ def play_event():
 
     if is_playing == True:
         pause_event()
-
+    elif is_paused == True:
+        resume_event()
     else:
         os.chdir(os.path.dirname(os.path.abspath(playlist.get(ACTIVE))))
     
         print("cwd in play_event >>> "+os.getcwd())
         print("this is the path of the song in play_event>>> " + os.path.abspath(playlist.get(ACTIVE)))
 
-    
-        current_song.set(os.path.basename(playlist.get(ACTIVE)))
+        name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # Splits the filename between the base and the extension
+        #current_song.set(os.path.basename(playlist.get(ACTIVE)))
+        current_song.set(name)
         pygame.mixer.music.load(playlist.get(ACTIVE))
         pygame.mixer.music.play()
         status.set("Playing")
         is_playing = True
         is_paused = False
         is_stopped = False
+        play_button_check()
         status_color_check()
 
 def stop_event():
@@ -80,11 +79,12 @@ def stop_event():
     global is_stopped
     global status
     pygame.mixer.music.stop()
-    status.set("Paused")
+    status.set("Stopped")
     is_stopped = True
     is_playing = False
     is_paused = False
     status_color_check()
+    play_button_check()
     
 def pause_event():
     global status
@@ -98,6 +98,62 @@ def pause_event():
     is_playing = False
     is_paused = True
     status_color_check()
+    play_button_check()
+
+def resume_event():
+    global is_playing
+    global is_paused
+    global is_stopped
+    global status
+    pygame.mixer.music.unpause()
+    status.set("Playing")
+    is_stopped = False
+    is_playing = True
+    is_paused = False
+    status_color_check()
+    play_button_check()
+
+def volume_slider_event(event):
+    global volume_slider
+    pygame.mixer.music.set_volume(volume_slider.get())
+
+def update_playlist():
+    global update_playlist
+    global dummy
+    global playlist
+
+    original_playlist = playlist.get(0,END)          # Used to remember what the playlist were
+    dummy = original_playlist
+
+def check_listbox(event):               # Function to check entry vs listbox
+    global playlist
+    global song_search
+    global original_playlist
+
+    update_playlist()
+    data = playlist.get(0, END)
+
+    typed = song_search.get()           # gets whatever we typed
+
+    if typed == '':
+        for item in original_playlist:
+            playlist.insert(END, original_playlist)
+    else: 
+        playlist.delete(0,END)
+        for item in data:
+            if typed.lower() in item.lower():
+                playlist.insert(END, item)
+
+    #clean_song_names, ext = os.path.splitext(playlist.get(0,END))
+    #songs = playlist.get(0,END)
+    #print(songs)
+
+#def fill_entry_search(event): # Updates the entrybox when a listbox click ocurs
+#    global song_search
+#    global playlist
+#    song_search.delete(0, END) # Deletes whatever it's on the entrybox.
+#    clean_name, ext = os.path.splitext(playlist.get(ACTIVE))
+#    song_search.insert(0,clean_name)
 
 def status_color_check():
     global is_playing
@@ -109,14 +165,31 @@ def status_color_check():
     if is_playing == True:
         status_label.configure(text_color="green")
         window.update()
-    elif is_paused == "True":
+    elif is_paused == True:
         status_label.configure(text_color="yellow")
         window.update()
-    elif is_stopped == "True":
-        status_label.configure(text_color="purple")
+    elif is_stopped == True:
+        status_label.configure(text_color="red")
         window.update()
     else:
-        status_label.configure(text_color="red")
+        status_label.configure(text_color="white")
+        window.update()
+
+def play_button_check():
+    global is_playing
+    global is_paused
+    global is_stopped
+    global window
+    global play_button
+
+    if is_playing == True:
+        play_button.configure(text="Pause")
+        window.update()
+    elif is_paused == True:
+        play_button.configure(text="Play")
+        window.update()
+    elif is_stopped == True:
+        play_button.configure(text="Play")
         window.update()
 
 # ------------------------------------------------------------- # SETTING UP VARIABLES # -------------------------------------------------------------#
@@ -127,6 +200,7 @@ window.title("Yani")
 window.iconbitmap("resources\\images\\mp3playericon.ico")
 
 pygame.mixer.init()
+pygame.mixer.music.set_volume(0.5)
 
 current_song = StringVar(window, value="<unknown>")
 status = StringVar(window, "<not available>")
@@ -139,18 +213,22 @@ frame_2 = customtkinter.CTkFrame(window, width=670,height=240)
 
 current_song_label = customtkinter.CTkLabel(frame_1, text="CURRENTLY PLAYING:",font=("Rubik",12))
 separator_1 = ttk.Separator(frame_1,orient=HORIZONTAL)
-actual_song_lbl = customtkinter.CTkLabel(frame_1, textvariable=current_song,font=("Rubik", 10))
+actual_song_lbl = customtkinter.CTkLabel(frame_1, textvariable=current_song,font=("Rubik", 10),text_color="orange")
 
-song_duration = customtkinter.CTkSlider(frame_1, from_=0,to=100,orientation=HORIZONTAL,state="normal",width=300)
+volume_slider = customtkinter.CTkSlider(frame_1, from_=0.0,to=1.0,orientation=HORIZONTAL,state="normal",width=300,command=volume_slider_event)
 
 song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=("Liberation Serif", 11))
+song_search.bind("<KeyRelease>",check_listbox)
 playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=50,height=160,background="#2e3038",highlightcolor="#3c3d45",selectbackground="#3c3d45",highlightthickness=0.5)
-playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)#2e3038
+playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
 playlist.configure(yscrollcommand=playlist_scroll_bar.set)
 playlist_scroll_bar.configure(command=playlist.yview)
+#playlist.bind("<<ListboxSelect>>", fill_entry_search) # Create a binding on listbox with leftclick 
+original_playlist = playlist.get(0,END)          # used to start over the playlist listbox
+dummy = original_playlist
 
 play_button = customtkinter.CTkButton(frame_1,text="Play",width=70,font=("Rubik",12),command=play_event)      # play changes to "Pause" when state is "playing"
-stop_button = customtkinter.CTkButton(frame_1,text="Pause",width=70,font=("Rubik",12),command=stop_event)     # always shows stop
+stop_button = customtkinter.CTkButton(frame_1,text="Stop",width=70,font=("Rubik",12),command=stop_event)     # always shows stop
 separator_2 = ttk.Separator(frame_1,orient=VERTICAL)
 status_label = customtkinter.CTkLabel(frame_1,textvariable=status,font=("Rubik",15),text_color="white")
 separator_3 = ttk.Separator(frame_1,orient=HORIZONTAL)
@@ -171,7 +249,7 @@ current_song_label.pack(anchor=W,padx=5)
 separator_1.place(x=0,y=30,width=300,height=1,relwidth=1)
 actual_song_lbl.place(x=135,y=0)
 
-song_duration.place(x=0,y=50)
+volume_slider.place(x=0,y=50)
 play_button.place(x=5,y=80) 
 stop_button.place(x=85,y=80)
 separator_2.place(x=165,y=80,width=1,height=30)
