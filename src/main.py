@@ -17,7 +17,7 @@ from PIL import Image
 customtkinter.set_appearance_mode("Dark")       # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("blue")   # Themes: "blue" (standard), "green", "dark-blue"
 
-# -- > Variables
+# -- > Variables ~ Useful for tracking what is the app state. By doing this we can change label text/color depending on the situation.
 is_playing = False
 is_paused = False
 is_stopped = True
@@ -27,19 +27,18 @@ def load_dir():
     os.chdir(filedialog.askdirectory(title="Select a folder",initialdir="~\Music"))
     tracks = os.listdir()
     for track in tracks:
-        if track.endswith(".mp3" or ".wav" or ".ogg"):
-            playlist.insert(END,os.path.abspath(track))
-    update_playlist()
+        if track.endswith(".mp3" or ".wav" or ".ogg" or ".xm" or ".mod"):   # All pygame compatible music formats
+            playlist.insert(END,os.path.abspath(track))     # I tried adding just the song titles but it wouldn't work if we added more items to the playlist later (different cwds)
 
 def load_file():
     global playlist
     track = filedialog.askopenfilename(title="Select a song",filetypes=[("MP3", ".mp3"),
                                         ("OGG", ".ogg"), ("XM", ".xm"), ("MOD", ".mod"), ("WAV", ".wav")], initialdir="~\Music")
     #os.chdir(os.path.dirname(track))
-    playlist.insert(END,os.path.abspath(track)) # Added abspath for uniform looking paths in the GUI.
+    playlist.insert(END,os.path.abspath(track)) # I use abspath here because without it things weren't uniform in the GUI.
     update_playlist()
 
-def remove_all():
+def remove_all():   # Function to delete all elements inside the playlist.
     global playlist
     playlist.delete(0,END)
 
@@ -113,36 +112,34 @@ def resume_event():
     status_color_check()
     play_button_check()
 
-def volume_slider_event(event):
+def volume_slider_event(event):                         # Function of the volume slider
     global volume_slider
-    pygame.mixer.music.set_volume(volume_slider.get())
+    pygame.mixer.music.set_volume(volume_slider.get())  # First gets the current value inside the tkinter slider then set it by using the pygame module
 
-def update_playlist():
-    global update_playlist
-    global dummy
-    global playlist
-
-    original_playlist = playlist.get(0,END)          # Used to remember what the playlist were
-    dummy = original_playlist
-
-def check_listbox(event):               # Function to check entry vs listbox
+def check_listbox(event):                       # Function to check entry vs listbox
     global playlist
     global song_search
-    global original_playlist
+    global all_listbox_items
 
-    update_playlist()
-    data = playlist.get(0, END)
+    all_listbox_items = playlist.get(0, END)    # Updates the playlist thingy
+    typed = song_search.get()                   # Gets what we typed into the entrybox
 
-    typed = song_search.get()           # gets whatever we typed
+    for i, item in enumerate(all_listbox_items):
+        if typed.lower() in item.lower():
+            playlist.selection_set(i)
+        else:
+            playlist.selection_clear(i)
+        if typed == '':
+            playlist.selection_clear(0, END)
 
-    if typed == '':
-        for item in original_playlist:
-            playlist.insert(END, original_playlist)
-    else: 
-        playlist.delete(0,END)
-        for item in data:
-            if typed.lower() in item.lower():
-                playlist.insert(END, item)
+    #if typed == '':
+    #    for item in original_playlist:
+    #        playlist.insert(END, original_playlist)
+    #else: 
+    #    playlist.delete(0,END)
+    #    for item in data:
+    #        if typed.lower() in item.lower():
+    #            playlist.insert(END, item)
 
     #clean_song_names, ext = os.path.splitext(playlist.get(0,END))
     #songs = playlist.get(0,END)
@@ -155,7 +152,7 @@ def check_listbox(event):               # Function to check entry vs listbox
 #    clean_name, ext = os.path.splitext(playlist.get(ACTIVE))
 #    song_search.insert(0,clean_name)
 
-def status_color_check():
+def status_color_check():   # Depending on the state of the bool variables, changes the status label color.
     global is_playing
     global is_paused
     global is_stopped
@@ -175,7 +172,7 @@ def status_color_check():
         status_label.configure(text_color="white")
         window.update()
 
-def play_button_check():
+def play_button_check():    # Depending on the state of the bool variables, changes the play button label text.
     global is_playing
     global is_paused
     global is_stopped
@@ -205,11 +202,11 @@ pygame.mixer.music.set_volume(0.5)
 current_song = StringVar(window, value="<unknown>")
 status = StringVar(window, "<not available>")
 
-logo_img = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\guitar.png"),size=(30,30))
+logo_img = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\yui-hira.png"),size=(30,30))
 
 # ------------------------------------------------------------- # CREATING THE GUI WIDGETS # -------------------------------------------------------------#
-frame_1 = customtkinter.CTkFrame(window,width=300,height=240)
-frame_2 = customtkinter.CTkFrame(window, width=670,height=240)
+frame_1 = customtkinter.CTkFrame(window,width=300,height=240)   # home for all of our control buttons
+frame_2 = customtkinter.CTkFrame(window, width=670,height=240)  # home for searchbar and playlist
 
 current_song_label = customtkinter.CTkLabel(frame_1, text="CURRENTLY PLAYING:",font=("Rubik",12))
 separator_1 = ttk.Separator(frame_1,orient=HORIZONTAL)
@@ -218,14 +215,15 @@ actual_song_lbl = customtkinter.CTkLabel(frame_1, textvariable=current_song,font
 volume_slider = customtkinter.CTkSlider(frame_1, from_=0.0,to=1.0,orientation=HORIZONTAL,state="normal",width=300,command=volume_slider_event)
 
 song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=("Liberation Serif", 11))
-song_search.bind("<KeyRelease>",check_listbox)
-playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=50,height=160,background="#2e3038",highlightcolor="#3c3d45",selectbackground="#3c3d45",highlightthickness=0.5)
+song_search.bind("<KeyRelease>",check_listbox)  # when a key is pressed and released, check_listbox function executes
+
+playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=50,height=160,background="#2e3038",highlightcolor="#3c3d45",selectbackground="#213c1c",highlightthickness=0.5)
 playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
 playlist.configure(yscrollcommand=playlist_scroll_bar.set)
 playlist_scroll_bar.configure(command=playlist.yview)
+
 #playlist.bind("<<ListboxSelect>>", fill_entry_search) # Create a binding on listbox with leftclick 
-original_playlist = playlist.get(0,END)          # used to start over the playlist listbox
-dummy = original_playlist
+all_listbox_items = playlist.get(0, END) # need this for the searchbar function 
 
 play_button = customtkinter.CTkButton(frame_1,text="Play",width=70,font=("Rubik",12),command=play_event)      # play changes to "Pause" when state is "playing"
 stop_button = customtkinter.CTkButton(frame_1,text="Stop",width=70,font=("Rubik",12),command=stop_event)     # always shows stop
@@ -242,12 +240,12 @@ separator_4 = ttk.Separator(frame_1,orient=HORIZONTAL)
 yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="purple",image=logo_img,compound="left")
 
 # ------------------------------------------------------------- # PACKING EVERYTHING # -------------------------------------------------------------#
-frame_1.pack_propagate(False) 
+frame_1.pack_propagate(False) # Needed so the frame stop changing it's width and height
 frame_1.place(x=10,y=10)
 
-current_song_label.pack(anchor=W,padx=5)
+current_song_label.pack(anchor=W,padx=5)    # Anchor w == align item to the left.
 separator_1.place(x=0,y=30,width=300,height=1,relwidth=1)
-actual_song_lbl.place(x=135,y=0)
+actual_song_lbl.place(x=135,y=0)            # This is where the song title is placed.
 
 volume_slider.place(x=0,y=50)
 play_button.place(x=5,y=80) 
@@ -262,13 +260,13 @@ remove_all_button.place(x=155,y=130)
 playback_rate.place(x=155,y=165)
 separator_4.place(x=0,y=205,width=300,height=1)
 
-yani_label.place(x=40,y=210)
+yani_label.place(x=30,y=210)
 
 frame_2.pack_propagate(False)
 frame_2.place(x=320,y=10)
 
 song_search.pack(padx=0,fill=BOTH)
-playlist.pack(fill=BOTH,pady=0,expand=TRUE)
+playlist.pack(fill=BOTH,pady=0,expand=TRUE)     # Fill and expand makes it take the max space inside the frame, thus making it nice and clean looking.
 playlist_scroll_bar.pack(side=RIGHT,fill=BOTH)
 
 # The End
