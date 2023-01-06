@@ -36,7 +36,6 @@ def load_file():
                                         ("OGG", ".ogg"), ("XM", ".xm"), ("MOD", ".mod"), ("WAV", ".wav")], initialdir="~\Music")
     #os.chdir(os.path.dirname(track))
     playlist.insert(END,os.path.abspath(track)) # I use abspath here because without it things weren't uniform in the GUI.
-    update_playlist()
 
 def remove_all():   # Function to delete all elements inside the playlist.
     global playlist
