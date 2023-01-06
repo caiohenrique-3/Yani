@@ -1,20 +1,19 @@
-![Logo](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/th5xamgrr6se0x5ro4g6.png)
+<p align=center><img src="resources/images/yani-logo.png"></p>
 
-# Yani Music Player
+# <h1 align=center>Yani Music Player</h1>
 
-Yani is a music player that i made for learning purposes, and because of my love for music.
+<p align=center>Yani is a music player that i made for learning purposes, and because of my love for music.</p>
 
 
-## Screenshots
+![screenshot](https://user-images.githubusercontent.com/104094613/211110686-773f7a5a-0e16-4ac3-92b8-e13450fd67aa.png)
 
-![App Screenshot](https://via.placeholder.com/468x300?text=App+Screenshot+Here)
+
 
 
 ## Installation Guide
 
-```bash
-  You can download it here
-```
+You can download it [here](https://github.com/theresnoexit/Yani)
+
     
 ## License
 
