@@ -12,7 +12,7 @@
 
 ## Installation Guide
 
-You can download it [here](https://github.com/theresnoexit/Yani)
+You can download it [here](https://github.com/theresnoexit/Yani/releases/download/1.0/Yani.exe)
 
     
 ## License
