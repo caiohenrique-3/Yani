@@ -21,6 +21,9 @@ customtkinter.set_default_color_theme("blue")   # Themes: "blue" (standard), "gr
 is_playing = False
 is_paused = False
 is_stopped = True
+
+playlist_URLs = [] # A URL list for the ListBox playlist items - for upgrade the ListBox look  
+
 # ------------------------------------------------------------- # FUNCTIONS # -------------------------------------------------------------#
 def load_dir():
     global playlist
@@ -28,18 +31,26 @@ def load_dir():
     tracks = os.listdir()
     for track in tracks:
         if track.endswith(".mp3" or ".wav" or ".ogg" or ".xm" or ".mod"):   # All pygame compatible music formats
-            playlist.insert(END,os.path.abspath(track))     # I tried adding just the song titles but it wouldn't work if we added more items to the playlist later (different cwds)
+            # playlist.insert(END,os.path.abspath(track))     # I tried adding just the song titles but it wouldn't work if we added more items to the playlist later (different cwds)
+            playlist_URLs.append(os.path.abspath(track))
+            playlist.insert(END,os.path.basename(track))
+            
 
 def load_file():
     global playlist
     track = filedialog.askopenfilename(title="Select a song",filetypes=[("MP3", ".mp3"),
                                         ("OGG", ".ogg"), ("XM", ".xm"), ("MOD", ".mod"), ("WAV", ".wav")], initialdir="~\Music")
 
-    playlist.insert(END,os.path.abspath(track)) # I use abspath here because without it things weren't uniform in the GUI.
+    # playlist.insert(END,os.path.abspath(track)) # I use abspath here because without it things weren't uniform in the GUI.
+    playlist_URLs.append(os.path.abspath(track))
+    playlist.insert(END,os.path.basename(track))
 
 def remove_all():   # Function to delete all elements inside the playlist.
     global playlist
     playlist.delete(0,END)
+    
+    global playlist_URLs
+    playlist_URLs = []
 
 def play_event():
     global current_song
@@ -48,6 +59,8 @@ def play_event():
     global is_playing
     global is_paused
     global is_stopped
+
+    global playlist_URLs
 
     if is_playing == True:
         pause_event()
@@ -61,7 +74,12 @@ def play_event():
 
         name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # Splits the filename between the base and the extension
         current_song.set(name)
-        pygame.mixer.music.load(playlist.get(ACTIVE))
+        # pygame.mixer.music.load(playlist.get(ACTIVE))
+        
+        pygame.mixer.music.load(playlist_URLs[playlist.curselection()[0]])
+        #                                playlist.curselection()[0]
+        # this metod return a list of the items selected of playlist so needs choose the index 0
+        
         pygame.mixer.music.play()
         status.set("Playing")
         is_playing = True
@@ -134,7 +152,11 @@ def check_listbox(event):                       # Function to check entry vs lis
     global song_search
     global all_listbox_items
 
-    all_listbox_items = playlist.get(0, END)    # Updates the playlist thingy
+    global playlist_URLs
+
+    # all_listbox_items = playlist.get(0, END)    # Updates the playlist thingy
+    all_listbox_items = playlist_URLs
+
     typed = song_search.get()                   # Gets what we typed into the entrybox
 
     for i, item in enumerate(all_listbox_items):
