@@ -1,2 +1,6 @@
 
 config/build.json
+.gitattributes
+.vscode/launch.json
+.vscode/launch.json
+README.md
