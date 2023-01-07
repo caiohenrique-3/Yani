@@ -34,7 +34,7 @@ def load_file():
     global playlist
     track = filedialog.askopenfilename(title="Select a song",filetypes=[("MP3", ".mp3"),
                                         ("OGG", ".ogg"), ("XM", ".xm"), ("MOD", ".mod"), ("WAV", ".wav")], initialdir="~\Music")
-    #os.chdir(os.path.dirname(track))
+
     playlist.insert(END,os.path.abspath(track)) # I use abspath here because without it things weren't uniform in the GUI.
 
 def remove_all():   # Function to delete all elements inside the playlist.
@@ -60,7 +60,6 @@ def play_event():
         print("this is the path of the song in play_event>>> " + os.path.abspath(playlist.get(ACTIVE)))
 
         name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # Splits the filename between the base and the extension
-        #current_song.set(os.path.basename(playlist.get(ACTIVE)))
         current_song.set(name)
         pygame.mixer.music.load(playlist.get(ACTIVE))
         pygame.mixer.music.play()
@@ -70,6 +69,7 @@ def play_event():
         is_stopped = False
         play_button_check()
         status_color_check()
+        song_end_check_event()   # Checks every second if the song has ended
 
 def stop_event():
     global is_playing
@@ -115,6 +115,20 @@ def volume_slider_event(event):                         # Function of the volume
     global volume_slider
     pygame.mixer.music.set_volume(volume_slider.get())  # First gets the current value inside the tkinter slider then set it by using the pygame module
 
+def song_end_check_event():
+    global is_playing
+    global is_paused
+    global is_stopped
+    for event in pygame.event.get():
+        if event.type == MUSIC_END:
+            is_stopped = True
+            is_playing = False
+            is_paused = False
+            status_color_check()
+            play_button_check()
+            status.set("Stopped")
+    window.after(1000, song_end_check_event)             # Repeat this function every 1 second
+
 def check_listbox(event):                       # Function to check entry vs listbox
     global playlist
     global song_search
@@ -130,26 +144,6 @@ def check_listbox(event):                       # Function to check entry vs lis
             playlist.selection_clear(i)
         if typed == '':
             playlist.selection_clear(0, END)
-
-    #if typed == '':
-    #    for item in original_playlist:
-    #        playlist.insert(END, original_playlist)
-    #else: 
-    #    playlist.delete(0,END)
-    #    for item in data:
-    #        if typed.lower() in item.lower():
-    #            playlist.insert(END, item)
-
-    #clean_song_names, ext = os.path.splitext(playlist.get(0,END))
-    #songs = playlist.get(0,END)
-    #print(songs)
-
-#def fill_entry_search(event): # Updates the entrybox when a listbox click ocurs
-#    global song_search
-#    global playlist
-#    song_search.delete(0, END) # Deletes whatever it's on the entrybox.
-#    clean_name, ext = os.path.splitext(playlist.get(ACTIVE))
-#    song_search.insert(0,clean_name)
 
 def status_color_check():   # Depending on the state of the bool variables, changes the status label color.
     global is_playing
@@ -195,8 +189,11 @@ window.resizable(width=False,height=False)
 window.title("Yani")
 window.iconbitmap("resources\\images\\mp3playericon.ico")
 
+pygame.init()               # need this to be able catch pygame events
 pygame.mixer.init()
 pygame.mixer.music.set_volume(0.5)
+MUSIC_END = pygame.USEREVENT+1
+pygame.mixer.music.set_endevent(MUSIC_END)
 
 current_song = StringVar(window, value="<unknown>")
 status = StringVar(window, "<not available>")
@@ -220,8 +217,7 @@ playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=50,height=160,ba
 playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
 playlist.configure(yscrollcommand=playlist_scroll_bar.set)
 playlist_scroll_bar.configure(command=playlist.yview)
-
-#playlist.bind("<<ListboxSelect>>", fill_entry_search) # Create a binding on listbox with leftclick 
+ 
 all_listbox_items = playlist.get(0, END) # need this for the searchbar function 
 
 play_button = customtkinter.CTkButton(frame_1,text="Play",width=70,font=("Rubik",12),command=play_event)      # play changes to "Pause" when state is "playing"
