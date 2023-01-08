@@ -56,9 +56,6 @@ def play_event():
     else:
         os.chdir(os.path.dirname(os.path.abspath(playlist.get(ACTIVE))))
     
-        print("cwd in play_event >>> "+os.getcwd())
-        print("this is the path of the song in play_event>>> " + os.path.abspath(playlist.get(ACTIVE)))
-
         name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # Splits the filename between the base and the extension
         current_song.set(name)
         pygame.mixer.music.load(playlist.get(ACTIVE))
@@ -70,6 +67,31 @@ def play_event():
         play_button_check()
         status_color_check()
         song_end_check_event()   # Checks every second if the song has ended
+
+def play_event_doubleclick(event):  # This function will handle the event when the user doubleclicks an item in the listbox.
+    global is_playing
+    global is_paused
+    global is_stopped
+
+    if is_playing == True:
+
+        is_playing = False
+        is_stopped = True
+        is_paused = False
+        play_event()
+    elif is_paused == True:
+
+        is_playing = False
+        is_stopped = True
+        is_paused = False
+        play_event()
+    
+    elif is_stopped == True:
+    
+        is_playing = False
+        is_stopped = True
+        is_paused = False
+        play_event()
 
 def stop_event():
     global is_playing
@@ -115,19 +137,38 @@ def volume_slider_event(event):                         # Function of the volume
     global volume_slider
     pygame.mixer.music.set_volume(volume_slider.get())  # First gets the current value inside the tkinter slider then set it by using the pygame module
 
-def song_end_check_event():
+def song_end_check_event(): # Function that keeps track of our song end.
     global is_playing
     global is_paused
     global is_stopped
+    global current_song
+    global status
     for event in pygame.event.get():
-        if event.type == MUSIC_END:
+        if event.type == MUSIC_END:                     # If the music ends, updates our GUI labels through our functions and setters.
             is_stopped = True
             is_playing = False
             is_paused = False
             status_color_check()
             play_button_check()
             status.set("Stopped")
+            current_song.set("<unknown>")
     window.after(1000, song_end_check_event)             # Repeat this function every 1 second
+
+def new_song_check(event):                                   # This function checks the current selected song vs the one playing rn
+    global playlist
+    global play_button
+    global current_song
+    global status
+    global MUSIC_END
+
+    name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # This ugly thing splits the filename between the base and the extension variables.
+    
+    if current_song.get() == name and status.get() == "Playing" and event.type != MUSIC_END:     # If our current playing song is the same as the current listbox selection, do nothing
+        play_button.configure(text="Pause")
+        window.update()
+    else:
+        play_button.configure(text="Play")
+        window.update()
 
 def check_listbox(event):                       # Function to check entry vs listbox
     global playlist
@@ -217,7 +258,9 @@ playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=50,height=160,ba
 playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
 playlist.configure(yscrollcommand=playlist_scroll_bar.set)
 playlist_scroll_bar.configure(command=playlist.yview)
- 
+
+playlist.bind("<<ListboxSelect>>", new_song_check) # Create a binding on listbox with leftclick
+playlist.bind("<Double-Button-1>", play_event_doubleclick)
 all_listbox_items = playlist.get(0, END) # need this for the searchbar function 
 
 play_button = customtkinter.CTkButton(frame_1,text="Play",width=70,font=("Rubik",12),command=play_event)      # play changes to "Pause" when state is "playing"
