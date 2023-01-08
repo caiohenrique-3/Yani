@@ -157,7 +157,7 @@ def volume_slider_event(event):                         # Function of the volume
     global volume_slider
     pygame.mixer.music.set_volume(volume_slider.get())  # First gets the current value inside the tkinter slider then set it by using the pygame module
 
-def song_end_check_event(): # Function that keeps track of our song end.
+def song_end_check_event(): # Function that keeps track of our song ending.
     global is_playing
     global is_paused
     global is_stopped
@@ -174,23 +174,23 @@ def song_end_check_event(): # Function that keeps track of our song end.
             current_song.set("<unknown>")
     window.after(1000, song_end_check_event)             # Repeat this function every 1 second
 
-def new_song_check(event):                                   # This function checks the current selected song vs the one playing rn
+def new_song_check(event):       # This function checks the current selected song vs the one playing rn
     global playlist
     global play_button
     global current_song
     global status
     global MUSIC_END
 
-    name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # This ugly thing splits the filename between the base and the extension variables.
+    name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # This ugly thing splits the filename from the extension and stores it in the variables.
     
     if current_song.get() == name and status.get() == "Playing" and event.type != MUSIC_END:     # If our current playing song is the same as the current listbox selection, do nothing
-        play_button.configure(text="Pause")
-        window.update()
+        play_button.configure(text="Pause") # Needed because if we had clicked on a different item on the playlist and changed back to the current song, the label would be "Play"
+        window.update()                     # instead of "pause", which is the intended.
     else:
         play_button.configure(text="Play")
         window.update()
 
-def check_listbox(event):                       # Function to check entry vs listbox
+def check_listbox(event):                       # Function to check the entry search bar vs listbox items
     global playlist
     global song_search
     global all_listbox_items
@@ -276,19 +276,19 @@ actual_song_lbl = customtkinter.CTkLabel(frame_1, textvariable=current_song,font
 volume_slider = customtkinter.CTkSlider(frame_1, from_=0.0,to=1.0,orientation=HORIZONTAL,state="normal",width=300,command=volume_slider_event)
 
 song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=("Liberation Serif", 11))
-song_search.bind("<KeyRelease>",check_listbox)  # when a key is pressed and released, check_listbox function executes
+song_search.bind("<KeyRelease>",check_listbox)  # When a key is pressed and released, check_listbox function executes
 
 playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=50,height=160,background="#2e3038",highlightcolor="#3c3d45",selectbackground="#213c1c",highlightthickness=0.5)
 playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
 playlist.configure(yscrollcommand=playlist_scroll_bar.set)
 playlist_scroll_bar.configure(command=playlist.yview)
 
-playlist.bind("<<ListboxSelect>>", new_song_check) # Create a binding on listbox with leftclick
-playlist.bind("<Double-Button-1>", play_event_doubleclick)
-all_listbox_items = playlist.get(0, END) # need this for the searchbar function 
+playlist.bind("<<ListboxSelect>>", new_song_check) # Create a binding on listbox with leftclick, used to change GUI labels
+playlist.bind("<Double-Button-1>", play_event_doubleclick)  # Double clicking it will start to play the item
+all_listbox_items = playlist.get(0, END) # Need this for the searchbar function 
 
-play_button = customtkinter.CTkButton(frame_1,text="Play",width=70,font=("Rubik",12),command=play_event)      # play changes to "Pause" when state is "playing"
-stop_button = customtkinter.CTkButton(frame_1,text="Stop",width=70,font=("Rubik",12),command=stop_event)     # always shows stop
+play_button = customtkinter.CTkButton(frame_1,text="Play",width=70,font=("Rubik",12),command=play_event)      # Play changes to "Pause" when state is "playing"
+stop_button = customtkinter.CTkButton(frame_1,text="Stop",width=70,font=("Rubik",12),command=stop_event)     # Always shows "stop"
 separator_2 = ttk.Separator(frame_1,orient=VERTICAL)
 status_label = customtkinter.CTkLabel(frame_1,textvariable=status,font=("Rubik",15),text_color="white")
 separator_3 = ttk.Separator(frame_1,orient=HORIZONTAL)
@@ -296,7 +296,7 @@ separator_3 = ttk.Separator(frame_1,orient=HORIZONTAL)
 add_folder_button = customtkinter.CTkButton(frame_1,text="Add a directory",width=140,font=("Rubik",12),command=load_dir)
 add_file_button = customtkinter.CTkButton(frame_1,text="Add a single file",width=140,font=("Rubik",12),command=load_file)
 remove_all_button = customtkinter.CTkButton(frame_1,text="Remove All Songs",width=140,font=("Rubik",12),hover_color="red",command=remove_all)
-playback_rate = customtkinter.CTkButton(frame_1,text="1x",width=140,font=("Rubik",12),hover_color="blue")   # changes with each click ** TODO 
+playback_rate = customtkinter.CTkButton(frame_1,text="1x",width=140,font=("Rubik",12),hover_color="blue")   # Changes with each click, 0.5, 0.75, 1.0, 1.25 - 1.5 - 2.0 ** TODO 
 separator_4 = ttk.Separator(frame_1,orient=HORIZONTAL)
 
 yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="purple",image=logo_img,compound="left")
