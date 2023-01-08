@@ -33,7 +33,8 @@ def load_dir():
         if track.endswith(".mp3" or ".wav" or ".ogg" or ".xm" or ".mod"):   # All pygame compatible music formats
             # playlist.insert(END,os.path.abspath(track))     # I tried adding just the song titles but it wouldn't work if we added more items to the playlist later (different cwds)
             playlist_URLs.append(os.path.abspath(track))
-            playlist.insert(END,os.path.basename(track))
+            temp, ext = os.path.splitext(os.path.basename(os.path.abspath(track)))
+            playlist.insert(END,temp)
             
 
 def load_file():
@@ -43,7 +44,8 @@ def load_file():
 
     # playlist.insert(END,os.path.abspath(track)) # I use abspath here because without it things weren't uniform in the GUI.
     playlist_URLs.append(os.path.abspath(track))
-    playlist.insert(END,os.path.basename(track))
+    temp, ext = os.path.splitext(os.path.basename(os.path.abspath(track)))
+    playlist.insert(END,temp)
 
 def remove_all():   # Function to delete all elements inside the playlist.
     global playlist
@@ -294,7 +296,7 @@ separator_3 = ttk.Separator(frame_1,orient=HORIZONTAL)
 add_folder_button = customtkinter.CTkButton(frame_1,text="Add a directory",width=140,font=("Rubik",12),command=load_dir)
 add_file_button = customtkinter.CTkButton(frame_1,text="Add a single file",width=140,font=("Rubik",12),command=load_file)
 remove_all_button = customtkinter.CTkButton(frame_1,text="Remove All Songs",width=140,font=("Rubik",12),hover_color="red",command=remove_all)
-playback_rate = customtkinter.CTkButton(frame_1,text="1x",width=140,font=("Rubik",12),hover_color="blue")   # changes with each click.
+playback_rate = customtkinter.CTkButton(frame_1,text="1x",width=140,font=("Rubik",12),hover_color="blue")   # changes with each click ** TODO 
 separator_4 = ttk.Separator(frame_1,orient=HORIZONTAL)
 
 yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="purple",image=logo_img,compound="left")
