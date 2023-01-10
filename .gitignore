@@ -4,3 +4,4 @@ config/build.json
 .vscode/launch.json
 .vscode/launch.json
 README.md
+out/
