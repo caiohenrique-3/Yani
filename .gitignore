@@ -1,7 +1,13 @@
+.gitattributes
+
+.vscode/launch.json
+
+README.md
 
 config/build.json
-.gitattributes
-.vscode/launch.json
-.vscode/launch.json
-README.md
+
 out/
+
+__pycache__
+
+cache.py
