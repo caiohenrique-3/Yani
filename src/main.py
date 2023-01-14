@@ -7,14 +7,14 @@ import customtkinter
 # For handling files and directories
 import os
 
-# For playing music.
+# For playing music
 import pygame.mixer
 
 # For handling customtkinter compatible png files
 from PIL import Image
 
 # For saving the current playlist and the chosen volume
-from saving_files import on_playlist_change
+from saving_settings import on_playlist_change
 
 # For loading the saved playlist and some other values
 from on_start import on_program_start
@@ -33,7 +33,7 @@ is_paused = False
 is_stopped = True
 autoplay = True
 
-playlist_URLs = [] # A URL list for the ListBox playlist items - for upgraded ListBox look  
+playlist_URLs = []      # A URL list for the ListBox playlist items - for upgraded ListBox look  
                                                     
 # ----------------------------------------------- # FUNCTIONS - Adding and Removing Files # ----------------------------------------------- #
 def load_dir():         # Function to add all files inside a folder to the playlist. Checks all of them for bad characters before adding it.
@@ -113,27 +113,21 @@ def play_song():
     else:
         try:
             song_name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))  # Doing this to only get the name of the song, without the extension
-            
+
             full_song_path = ""   # We need the full song path here to be able to find it inside playlist_URLs using its index() function, which only accepts
                                   # full song paths.
 
             for track in playlist_URLs:     # Going through every item in playlist_URLs. Remember here that "track" holds the FULL path - > os.path.abspath
                 temp_name, ext = os.path.splitext(os.path.basename(track))     # Sets a temp variable to hold only the name of the song, without extension    
                 if temp_name == song_name:  # Comparing the temp variable with our song_name variable, checking if both are the same
-                    full_song_path = track  # If true, stores the full path of the song in a variable...
-            song_index = playlist_URLs.index(full_song_path) # ... which will be used here, to search the index of our song.
-            pygame.mixer.music.load(playlist_URLs[song_index])  # Making this call here not go crazy when you try to play a song after
-                                                                # you just finished using the search box to find a specific song.
+                    full_song_path = track  # If true, stores the full path of the song in a variable
+                    
+            pygame.mixer.music.load(full_song_path) # And finally play it here.
             
-            # ^ Without all of this above, the play button was being fed the incorrect index for the song, and was starting to play the incorrect choice on song_search. ^
-
-        except IndexError:  # Left for future debugging, i tested all cases and it doens't happen anymore.
-            temp =  os.path.abspath(playlist.get(ACTIVE))
-            print("[DEBUG] IndexError Exception has ocurred.")
-            print("[DEBUG] active song --> ", temp)
-            print("[DEBUG] playlist_URLs -->", playlist_URLs)
+        except Exception as e:  
+            print(e)
         
-        else:  # This block of code runs if no exceptions has ocurred
+        else:                             # This block of code runs if no exceptions has ocurred
             pygame.mixer.music.play()
             current_song.set(song_name)   # Updates "actual_song_lbl"
             status.set("Playing")         # Updates "status_label"
@@ -196,9 +190,9 @@ def autoplay_next_song():        # Basically the play_event function, but built 
                                                                                                        # Then get its basename, and splits the name from the extension
         current_song.set(name)      # Updates "actual_song_lbl"
             
-        pygame.mixer.music.load(playlist_URLs[playlist.curselection()[0] + 1])  # Here, we are trying to load the next item in the playlist. Hence, the + 1 in the end.
+        pygame.mixer.music.load(playlist_URLs[playlist.curselection()[0] + 1]) 
         #                                playlist.curselection()[0] + 1 
-        # This method returns a list of items selected in the playlist, so it needs to choose the index 0 (current item) + 1 (next item) to load the correct thing.
+        # This method returns a list of items selected in the playlist, so it needs to choose the index + 1 (next item) to load the correct thing.
             
         pygame.mixer.music.play()
         status.set("Playing")    # Updates "status_label"
@@ -219,7 +213,7 @@ def song_has_ended_check():      # Function that checks if the song has ended, a
         elif event.type == MUSIC_END and autoplay == True and is_stopped == False:  # If the music ends, auto starts the next item in the playlist.
             autoplay_next_song()                                                    # Removing "is_stopped == False" will cause a song... 
                                                                                     # ...to start every time the "Stop" button is pressed.
-    window.after(1000, song_has_ended_check)                # Repeat this function every 1 second
+    window.after(1000, song_has_ended_check)                                        # Repeat this function every 1 second
 
 # ----------------------------------------------- # FUNCTIONS - GUI event handlers # ----------------------------------------------- #
 def update_volume(event):                               # Function to change the volume according to our volume slider in the GUI
@@ -233,7 +227,7 @@ def is_it_playing(event):   # Function that checks if the current selected item 
     global status
     global MUSIC_END
 
-    name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))    # Getting only the name of the song here, without the extension.
+    name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))                         # Getting only the name of the song here, without the extension.
     
     if current_song.get() == name and status.get() == "Playing" and event.type != MUSIC_END:     # If our current playing song is the same as the current listbox selection, do nothing
         play_button.configure(text="Pause") # Needed because if we had clicked on a different item on the playlist and changed back to the current song, the label would be "Play"
@@ -298,7 +292,7 @@ def play_button_check():    # Depending on the state of the bool variables, chan
         play_button.configure(text="Play")  # Changes the button to "Play"
         window.update()
 
-def boolean_switch(input):  # Function that sets the main booleans to True or False depending on the input parameter.
+def boolean_switch(input):                  # Function that sets the main booleans to True or False depending on the input parameter.
     global is_playing
     global is_paused
     global is_stopped
@@ -350,15 +344,11 @@ actual_song_lbl = customtkinter.CTkLabel(frame_1, textvariable=current_song,font
 volume_slider = customtkinter.CTkSlider(frame_1, from_=0.0,to=1.0,orientation=HORIZONTAL,state="normal",width=300,command=update_volume)
 
 song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=("Liberation Serif", 11))
-song_search.bind("<KeyRelease>",search_songs)               # When a key is pressed and released, search the song that matches what's been typed
-                                                            
+            
 playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=50,height=160,background="#2e3038",highlightcolor="#3c3d45",selectbackground="#213c1c",highlightthickness=0.5)
 playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
 playlist.configure(yscrollcommand=playlist_scroll_bar.set)
 playlist_scroll_bar.configure(command=playlist.yview)
-
-playlist.bind("<<ListboxSelect>>", is_it_playing)           # Selecting an item in the ListBox will trigger matching updates to the GUI labels
-playlist.bind("<Double-Button-1>", play_event_doubleclick)  # Double clicking an item in the ListBox will start to play it
 
 play_button = customtkinter.CTkButton(frame_1,text="Play",width=70,font=("Rubik",12),command=play_song)     
 stop_button = customtkinter.CTkButton(frame_1,text="Stop",width=70,font=("Rubik",12),command=stop_song)     
@@ -369,10 +359,15 @@ separator_3 = ttk.Separator(frame_1,orient=HORIZONTAL)
 add_folder_button = customtkinter.CTkButton(frame_1,text="Add a directory",width=140,font=("Rubik",12),command=load_dir)
 add_file_button = customtkinter.CTkButton(frame_1,text="Add a single file",width=140,font=("Rubik",12),command=load_file)
 remove_all_button = customtkinter.CTkButton(frame_1,text="Remove All Songs",width=140,font=("Rubik",12),hover_color="red",command=remove_all)
-playback_rate = customtkinter.CTkButton(frame_1,text="1x",width=140,font=("Rubik",12),hover_color="blue")  
+playback_rate = customtkinter.CTkButton(frame_1,text="1x",width=140,font=("Rubik",12),hover_color="blue") # WILL BE REMOVED IN THE NEXT GUI UPDATE, ONLY A PLACEHOLDER  
 separator_4 = ttk.Separator(frame_1,orient=HORIZONTAL)
 
 yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="purple",image=logo_img,compound="left")
+
+# ----------------------------------------------- # FUNCTIONS - GUI event handlers part 2 # ----------------------------------------------- #
+song_search.bind("<KeyRelease>",search_songs)               # When a key is pressed and released, search the song that matches what's been typed
+playlist.bind("<<ListboxSelect>>", is_it_playing)           # Selecting an item in the ListBox will trigger matching updates to the GUI labels
+playlist.bind("<Double-Button-1>", play_event_doubleclick)  # Double clicking an item in the ListBox will start to play it
 
 # ------------------------------------------------------------- # PACKING EVERYTHING # -------------------------------------------------------------#
 frame_1.pack_propagate(False)                   # Needed so the frame stop changing it's width and height if we add items to it
@@ -392,7 +387,7 @@ separator_3.place(x=0,y=120,width=300,height=1)
 add_folder_button.place(x=5,y=130)              # displays - > "Add a directory"
 add_file_button.place(x=5,y=165)                # displays - > "Add a single file"
 remove_all_button.place(x=155,y=130)
-playback_rate.place(x=155,y=165)                # displays - > 0.5, 0.75, 1.0, 1.25 - 1.5 - 2.0
+playback_rate.place(x=155,y=165)                # WILL BE REMOVED IN THE NEXT GUI UPDATE, ONLY A PLACEHOLDER
 separator_4.place(x=0,y=205,width=300,height=1)
 
 yani_label.place(x=30,y=210)                    # displays - > "Yani Music Player"

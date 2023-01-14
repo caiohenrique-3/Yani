@@ -4,7 +4,9 @@
 
 README.md
 
-config/build.json
+config/build_to_exe_dirmode.json
+
+config/build_to_exe.json
 
 out/
 
