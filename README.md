@@ -12,7 +12,15 @@
 
 ## Installation Guide
 
-You can download it [here](https://github.com/theresnoexit/Yani/releases/download/1.1/Yani.exe)
+You can download it [here](https://github.com/theresnoexit/Yani/releases/download/1.3/Yani.rar)
+
+## Auto-py-to-exe Compilation Guide
+- **Install dependencies: [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) | [pygame](https://github.com/pygame/pygame)**
+- **Copy those settings:**
+![building_screenshot](https://user-images.githubusercontent.com/104094613/212499145-d772dd31-12c0-4f79-b088-26c3ec34ce2d.png)
+- **Choose an output path under the "Settings" option**
+- **Click run**
+
 
     
 ## License
