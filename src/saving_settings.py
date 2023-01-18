@@ -17,3 +17,8 @@ def on_playlist_change(playlist):                               # Called by add_
                                                                 # This way, it keeps everything nice and organized.
                                                                 # And opens the possibility to add more keys in the future, for easy config expansion
 
+
+def OrderedDict():                                              # This breaks everything...
+    my_dict = {"playlist":[],
+                "volume_value": 50}
+    return my_dict
