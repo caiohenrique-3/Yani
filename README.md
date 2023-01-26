@@ -5,7 +5,8 @@
 <p align=center>Yani is a music player that i made for learning purposes, and because of my love for music.</p>
 
 
-![screenshot](https://user-images.githubusercontent.com/104094613/211176213-41b5aff7-4f91-4beb-83c4-fe185a51037b.png)
+
+![screenshot](https://user-images.githubusercontent.com/104094613/213314383-01e9c8b0-c0c0-4c91-a982-59ebccc8b156.png)
 
 
 

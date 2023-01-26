@@ -44,7 +44,9 @@ song_length = 0         # Need both of these values to correctly update the song
 correct_song_pos = 0    # They are used in the update_song_pos and set_song_pos functions.
                         
 playlist_URLs = []      # A URL list for the ListBox playlist items - for upgraded ListBox look  
-                                                    
+
+custom_font = "resources\\fonts\\Poppins-ExtraLight.ttf" # Good looking font!
+
 # ----------------------------------------------- # FUNCTIONS - Adding and Removing Files # ----------------------------------------------- #
 def load_dir():         # Function to add all files inside a folder to the playlist. Checks all of them for bad characters before adding it.
     global playlist
@@ -169,6 +171,7 @@ def play_song():
             play_button_check()           # Checks the boolean variables and changes the text of the "Play/Pause" button.
             status_color_check()          # Checks the boolean variables and changes the color of the status label.
             song_has_ended_check()        # Checks every second if the song has ended
+            playlist.selection_clear(0, END) # Stops the selection of the song we just started to play
             try:
                 x = threading.Thread(target=update_song_pos, daemon=True)   # If it isn't already running,
                 x.start()                                                   # Start another thread which will update our slider position.
@@ -303,6 +306,7 @@ def update_song_pos():       # Function to  update the slider position in the GU
     global is_paused
     global is_stopped
     global correct_song_pos
+    global song_length
 
     if is_paused or is_stopped:     # If the music is paused or stopped, doesn't update the slider.
         pass
@@ -316,15 +320,14 @@ def update_song_pos():       # Function to  update the slider position in the GU
             song_curr_pos.configure(text=converted_to_time)                     # Updating the GUI
             
         else:
-            music_pos_slider.set(correct_song_pos)            # Setting the slider position according to correct_song_pos (it holds a value in seconds)
+            music_pos_slider.set(correct_song_pos)                # Setting the slider position according to correct_song_pos (it holds a value in seconds)
             
-            converted_to_time = convert(correct_song_pos)     # Converting seconds to "hours : minutes : seconds"
+            converted_to_time = convert(music_pos_slider.get())   # Converting seconds to "hours : minutes : seconds"
             
-            song_curr_pos.configure(text=converted_to_time)   # Updating our GUI  
+            song_curr_pos.configure(text=converted_to_time)       # Updating our GUI  
             
-            correct_song_pos += 0.5                   # Adding 0.5 seconds to our position variable. Very innacurate because songs have their own
-                                                      # bitrates, so the slider might look okay in some and terrible in others. 
-        
+            correct_song_pos += 1.0                               # Still trying to figure out this thing here... very broken still.           
+
     window.after(1000, update_song_pos)               # Repeating everything above every 1 second.
 
 def set_song_pos(event):                         # Function to handle the event when the user clicks the slider
@@ -342,29 +345,14 @@ def set_song_pos(event):                         # Function to handle the event 
 
 def update_song_details(song_path):  # Calls this function every time a new song comes in, updates some GUI elements and other variables too.
     global correct_song_pos
+    global song_length
 
     correct_song_pos = 0                                   # Since this is a new song, resets the song position
     song = MP3(song_path)                                  # Starts a mutagen thingy with our song
     song_length = song.info.length                         # Get's the song length using mutagen
     song_end_pos.configure(text=convert(song_length))      # Convert the value to "hours : minutes : seconds" and update our GUI with it
-    music_pos_slider.configure(from_= 0, to=song_length)
+    music_pos_slider.configure(from_= 0, to=song_length, number_of_steps = song_length)
     music_pos_slider.set(0)
-
-def is_it_playing(event):   # Function that checks if the current selected item in the listbox is the same one that is playing currently. 
-    global playlist         # ^^^ Needed to correctly update some GUI elements, like "Play/Pause" button.
-    global play_button
-    global current_song
-    global status
-    global MUSIC_END
-
-    name, ext = os.path.splitext(os.path.basename(playlist.get(ACTIVE)))                         # Getting only the name of the song here, without the extension.
-    
-    if current_song.get() == name and status.get() == "Playing" and event.type != MUSIC_END:     # If our current playing song is the same as the current listbox selection, do nothing
-        play_button.configure(text="Pause") # Needed because if we had clicked on a different item on the playlist and changed back to the current song, the label would be "Play"
-        window.update()                     # Instead of "pause", which is the intended.
-    else:
-        play_button.configure(text="Play")  # If the music is not the same one that is playing, changes button from "Pause" to "Play"
-        window.update()
 
 def search_songs(event):         # Function to check the entry search bar vs all ListBox items, and show only what matches
     global playlist
@@ -386,7 +374,7 @@ def search_songs(event):         # Function to check the entry search bar vs all
                 playlist.insert(END, name)                          # If true, display it in our ListBox
 
 def status_color_check():   # Depending on the state of the bool variables, changes the status label color.
-    global is_playing
+    global is_playing       # This function could be easily merged with the one below..
     global is_paused
     global is_stopped
     global status_label
@@ -459,7 +447,7 @@ window = customtkinter.CTk()
 window.geometry("1100x540") #1000x660
 window.resizable(width=False,height=False)
 window.title("Yani")
-window.iconbitmap("resources\\images\\mp3playericon.ico")
+window.iconbitmap("resources\\images\\icon.ico")
 
 pygame.init()                                           # Need this in order to be able catch pygame events
 pygame.mixer.init()
@@ -474,59 +462,69 @@ logo_img = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\yui-
 volume_png = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\volume.png"), size=(30,30))
 volume_muted_png = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\volume-mute.png"), size=(30,30))
 # ------------------------------------------------------------- # CREATING THE GUI WIDGETS # -------------------------------------------------------------#
-frame_1 = customtkinter.CTkFrame(window, width=300,height=485)  # Home for all of our music control buttons
-frame_2 = customtkinter.CTkFrame(window, width=770,height=440)  # Home for searchbar and playlist
-frame_3 = customtkinter.CTkFrame(window, width=770, height=30)  # Home for our "Currently PLaying" label
-frame_4 = customtkinter.CTkFrame(window, width=300,height=30)   # Home for our "State" label
-frame_5 = customtkinter.CTkFrame(window, width=770,height=40)   # Home for the song pos sliders
+frame_1 = customtkinter.CTkFrame(window, width=300,height=485)                      # Home for all of our music control buttons
+frame_2 = customtkinter.CTkFrame(window, width=770,height=440,fg_color="#282828")   # Home for searchbar and playlist
+frame_3 = customtkinter.CTkFrame(window, width=770, height=30)                      # Home for our "Currently PLaying" label
+frame_4 = customtkinter.CTkFrame(window, width=300,height=30)                       # Home for our "State" label
+frame_5 = customtkinter.CTkFrame(window, width=770,height=40)                       # Home for the song pos sliders
 
 # FROM FRAME 1 --->
-play_button = customtkinter.CTkButton(frame_1,text="Play",width=65,font=("Rubik",12),command=play_song)     
-stop_button = customtkinter.CTkButton(frame_1,text="Stop",width=65,font=("Rubik",12),command=stop_song)
+play_button = customtkinter.CTkButton(frame_1,text="Play",width=65,font=(custom_font,12),command=play_song, 
+fg_color="#2b23af", hover_color="#2b23af")     
+stop_button = customtkinter.CTkButton(frame_1,text="Stop",width=65,font=(custom_font,12),command=stop_song, 
+fg_color="#2b23af", hover_color="#2b23af")
 separator_1 = ttk.Separator(frame_1,orient=VERTICAL)
 
-previous_button = customtkinter.CTkButton(frame_1,text="Previous", width=65,font=("Rubik", 12),command=previous_song)
-next_button = customtkinter.CTkButton(frame_1,text="Next",width=65, font=("Rubik", 12), command=next_song)     
+previous_button = customtkinter.CTkButton(frame_1,text="Previous", width=65,font=(custom_font, 12),command=previous_song, 
+fg_color="#2b23af", hover_color="#2b23af")
+next_button = customtkinter.CTkButton(frame_1,text="Next",width=65, font=(custom_font, 12), command=next_song, 
+fg_color="#2b23af", hover_color="#2b23af")     
 separator_2 = ttk.Separator(frame_1,orient=HORIZONTAL)
 
 volume_image = customtkinter.CTkLabel(frame_1,image=volume_png,text="")
-volume_slider = customtkinter.CTkSlider(frame_1, from_=0.0,to=1.0,orientation=HORIZONTAL,state="normal",width=250,command=update_volume)
+volume_slider = customtkinter.CTkSlider(frame_1, from_=0.0,to=1.0,orientation=HORIZONTAL,state="normal",width=250,command=update_volume,
+fg_color="#9e9db0", progress_color="#e3e1f5", button_color="#2b23af", button_hover_color="#2b23af")
 separator_3 = ttk.Separator(frame_1,orient=HORIZONTAL)
 
-add_folder_button = customtkinter.CTkButton(frame_1,text="Add a directory",width=140,font=("Rubik",12),command=load_dir)
-add_file_button = customtkinter.CTkButton(frame_1,text="Add a single file",width=140,font=("Rubik",12),command=load_file)
-remove_all_button = customtkinter.CTkButton(frame_1,text="Remove All Songs",width=140,font=("Rubik",12),hover_color="red",command=remove_all)
-remove_single_button = customtkinter.CTkButton(frame_1,text="Remove A Single Song",width=140,font=("Rubik",12),hover_color="red",command=remove_single) 
+add_folder_button = customtkinter.CTkButton(frame_1,text="Add a directory",width=140,font=(custom_font,12),command=load_dir, 
+fg_color="#2b23af", hover_color="#2b23af")
+add_file_button = customtkinter.CTkButton(frame_1,text="Add a single file",width=140,font=(custom_font,12),command=load_file, 
+fg_color="#2b23af", hover_color="#2b23af")
+remove_all_button = customtkinter.CTkButton(frame_1,text="Remove All Songs",width=140,font=(custom_font,12),hover_color="red",command=remove_all, 
+fg_color="#2b23af")
+remove_single_button = customtkinter.CTkButton(frame_1,text="Remove A Single Song",width=140,font=(custom_font,12),hover_color="red",command=remove_single, 
+fg_color="#2b23af") 
 separator_4 = ttk.Separator(frame_1,orient=HORIZONTAL)
 
 separator_5 = ttk.Separator(frame_1,orient=HORIZONTAL)
 yui_img = customtkinter.CTkLabel(frame_1,text="",image=logo_img)
-yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="purple",compound="left")
+yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="#1003e1",compound="left")
 
 # FROM FRAME 2 --->
-song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=("Liberation Serif", 11))
+song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=(custom_font, 11))
 
-playlist = Listbox(frame_2, font=('Liberation Serif', 13),width=300,height=400,background="#2e3038",highlightcolor="#3c3d45",selectbackground="#213c1c",highlightthickness=0)
+playlist = Listbox(frame_2, font=(custom_font, 13),width=300,height=400,background="#282828",highlightcolor="#3c3d45",selectbackground="#026345",
+highlightthickness=0, borderwidth=0, selectborderwidth=0, activestyle="none", relief="sunken", fg="white")
 playlist_scroll_bar = customtkinter.CTkScrollbar(playlist,orientation=VERTICAL)
 playlist.configure(yscrollcommand=playlist_scroll_bar.set)
 playlist_scroll_bar.configure(command=playlist.yview)
 
 # FROM FRAME 3 --->            
 current_song_label = customtkinter.CTkLabel(frame_3, text="CURRENTLY PLAYING:",font=("Rubik",12))
-actual_song_lbl = customtkinter.CTkLabel(frame_3, textvariable=current_song,font=("Rubik", 10),text_color="orange")
+actual_song_lbl = customtkinter.CTkLabel(frame_3, textvariable=current_song,font=("Rubik", 12),text_color="#1003e1")
 
 # FROM FRAME 4 --->
-status_label = customtkinter.CTkLabel(frame_4,textvariable=status,font=("Rubik",15),text_color="red")
+status_label = customtkinter.CTkLabel(frame_4,textvariable=status,font=(custom_font,15),text_color="red")
 
 # FROM FRAME 5 --->
 song_curr_pos = customtkinter.CTkLabel(frame_5, text="0:00:00",font=("Rubik", 12))
 separator_6 = customtkinter.CTkLabel(frame_5, text="/", font=("Rubik", 12))
 song_end_pos = customtkinter.CTkLabel(frame_5, text="0:00:00", font=("Rubik", 12))
-music_pos_slider = customtkinter.CTkSlider(frame_5, from_=0, to=1000, orientation=HORIZONTAL,state="normal",width=620,height=15,command=set_song_pos)
+music_pos_slider = customtkinter.CTkSlider(frame_5, from_=0, to=1000, orientation=HORIZONTAL,state="normal",width=620,height=15,command=set_song_pos,
+fg_color="#e3e1f5", progress_color="#9e9db0", button_color="#2b23af", button_hover_color="#2b23af")
 
 # ----------------------------------------------- # FUNCTIONS - GUI event handlers part 2 # ----------------------------------------------- #
 song_search.bind("<KeyRelease>",search_songs)               # When a key is pressed and released, search the song that matches what's been typed
-playlist.bind("<<ListboxSelect>>", is_it_playing)           # Selecting an item in the ListBox will trigger matching updates to the GUI labels
 playlist.bind("<Double-Button-1>", play_event_doubleclick)  # Double clicking an item in the ListBox will start to play it
 
 # ------------------------------------------------------------- # PACKING EVERYTHING # -------------------------------------------------------------#
@@ -559,7 +557,8 @@ yani_label.place(x=90,y=450)                      # displays - > "Yani Music Pla
 frame_2.pack_propagate(False)                                            
 frame_2.place(x=320,y=95)                                                                                                                                 
 song_search.pack(padx=0,fill=BOTH)                # displays - > "Search for a song"                                                                        
-playlist.pack(fill=BOTH,expand=TRUE)              # displays - > A ListBox which shows all our added songs
+playlist.pack(fill=BOTH,expand=TRUE, padx=10,     # displays - > A ListBox which shows all our added songs 
+pady=10) 
 playlist_scroll_bar.pack(side=RIGHT,fill=BOTH)    # displays - > The scroll bar on the right of our ListBox                                                                                                         
 
 # FROM FRAME 3 --->                               # Home for our "Currently PLaying" label                                                                                   
