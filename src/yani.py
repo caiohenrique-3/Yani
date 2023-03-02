@@ -19,13 +19,18 @@ import threading
 
 # For saving the current playlist and the chosen volume
 from saving_settings import on_playlist_change
+from saving_settings import do_things_on_exit
 
 # For loading the saved playlist and some other values
 from on_start import on_program_start
 from on_start import get_urls
+from on_start import get_volume_from_cfg
 
 # For handling song names containing dots in their titles. Ex: "Generic Song - Bob ft. Kevin"
 from renaming_files import rename_prompt
+
+# For the exit handler
+import atexit
 
 # --> CTK variables
 customtkinter.set_appearance_mode("Dark")       # Modes: "System" (standard), "Dark", "Light"
@@ -45,32 +50,31 @@ correct_song_pos = 0    # They are used in the update_song_pos and set_song_pos 
                         
 playlist_URLs = []      # A URL list for the ListBox playlist items - for upgraded ListBox look  
 
-custom_font = "resources\\fonts\\Poppins-ExtraLight.ttf" # Good looking font!
+custom_font = "resources/fonts/Poppins-ExtraLight.ttf"
 
 # ----------------------------------------------- # FUNCTIONS - Adding and Removing Files # ----------------------------------------------- #
 def load_dir():         # Function to add all files inside a folder to the playlist. Checks all of them for bad characters before adding it.
-    global playlist
     global playlist_URLs
 
-    os.chdir(filedialog.askdirectory(title="Select a folder",initialdir="~\Music"))
+    os.chdir(filedialog.askdirectory(title="Select a folder",initialdir="~/Music"))
     tracks = os.listdir()
 
     for track in tracks:
         if track.endswith(".mp3" or ".wav" or ".ogg" or ".xm" or ".mod"):           # All pygame compatible music formats
-            temp, ext = os.path.splitext(os.path.basename(os.path.abspath(track)))  # Doing this we get only the name of the song, without the extension
-            if temp not in playlist.get(0, END):                    # Need to check the temp variable because we just store the song name inside the playlist ListBox.
-                if '.' not in temp:                                 # Files with dots in their names makes the program shit itself
-                    playlist_URLs.append(os.path.abspath(track))    # Gets the full path and stores it in our list
-                    playlist.insert(END,temp)                       # Adds "temp", which is the song name, to the end of our playlist ListBox.
-                    on_playlist_change(playlist_URLs)               # Save all paths to file user_settings.json
+            name, ext = os.path.splitext(os.path.basename(os.path.abspath(track)))  # Doing this we get only the name of the song, without the extension
+            if name not in playlist.get(0, END):                    # Here, "playlist" refers to the one that is present in the GUI.
+                if '.' not in name:                                 # Files with dots in their names makes the program shit itself
+                    playlist_URLs.append(os.path.abspath(track))    # Gets the full path and stores it in our list (this is not the GUI one)
+                    playlist.insert(END,name)                       # Adds the song to our playlist ListBox (this is the GUI one).
+                    on_playlist_change(playlist_URLs)               # Save every song path to user_settings.json
                 else:
                     track = rename_prompt(track)                    # This function will prompt the user to rename the file, and, if renamed, return the new name          
                     
                     if track != None:                                    # "None" is the return value when the user rejects the rename prompt 
                         track_without_ext, ext = os.path.splitext(track) # The extension dot count as a bad char, so split it from the name
                         playlist_URLs.append(os.path.abspath(track))     # Adds the full song path to our list. 
-                        playlist.insert(END, track_without_ext)          # Adds only the song title, without extension, to our ListBox in the GUI. 
-                        on_playlist_change(playlist_URLs)                # Saving the paths to user_settings.json
+                        playlist.insert(END, track_without_ext)          # Adds only the song title to our ListBox in the GUI. 
+                        on_playlist_change(playlist_URLs)                # Saving the song paths to user_settings.json
                         
 
 def load_file():        # Function to add a single file to the playlist. Checks the file for bad characters before adding it.
@@ -78,16 +82,16 @@ def load_file():        # Function to add a single file to the playlist. Checks 
     global playlist_URLs
 
     track = filedialog.askopenfilename(title="Select a song",filetypes=[("MP3", ".mp3"),   
-                                        ("OGG", ".ogg"), ("XM", ".xm"), ("MOD", ".mod"), ("WAV", ".wav")], initialdir="~\Music")
+                                        ("OGG", ".ogg"), ("XM", ".xm"), ("MOD", ".mod"), ("WAV", ".wav")], initialdir="~/Music")
 
     os.chdir(os.path.dirname(track))  # Gets the name of the folder and changes the current working folder to it. The rename_function needs it to find the song later
-    temp, ext = os.path.splitext(os.path.basename(os.path.abspath(track)))  # Getting only the name of the song here, without the extension
+    name, ext = os.path.splitext(os.path.basename(os.path.abspath(track)))  # Getting only the name of the song here, without the extension
 
-    if temp not in playlist.get(0, END):                    # Need to check temp because inside the ListBox there's only the song names, without extensions
-        if '.' not in temp:                                 # If there's no characters that break the program
+    if name not in playlist.get(0, END):                    # If the song isn't a duplicate
+        if '.' not in name:                                 # If there's no characters that break the program
             playlist_URLs.append(os.path.abspath(track))    # Add the full song path to our list
-            playlist.insert(END, temp)                      # Adds only the name of the song, without extension.
-            on_playlist_change(playlist_URLs)               # Saves all paths to file user_settings.json
+            playlist.insert(END, name)                      # Adds only the name of the song to our listbox in the GUI
+            on_playlist_change(playlist_URLs)               # Saves all song paths to user_settings.json
         else:
             track = rename_prompt(track)                    # This function will prompt the user to rename the file and return either "None" or the new filename
 
@@ -98,18 +102,15 @@ def load_file():        # Function to add a single file to the playlist. Checks 
                 on_playlist_change(playlist_URLs)                # Saving the paths to user_settings.json
                         
 def remove_all():    # Function to delete all items inside the playlist. Also stops whatever song is playing.
-    global playlist
     global playlist_URLs
-    global actual_song_lbl
 
     playlist.delete(0,END)                            # Deleting everything in our ListBox in the GUI
     playlist_URLs = []                                # Deleting all full song paths in our list
 
     stop_song()                                       # Does the necessary things to stop the song and update our GUI labels and button texts.                
-    on_playlist_change(playlist_URLs)                 # Saving the paths to user_settings.json
+    on_playlist_change(playlist_URLs)                 # Updating user_settings.json
 
 def remove_single(): # Function to delete a single item inside the playlist. This one doesn't stop the song playing, unless it's the one that got deleted.
-    global playlist
     global playlist_URLs
 
     for song in playlist_URLs:                                      # For every song in our song paths
@@ -118,20 +119,12 @@ def remove_single(): # Function to delete a single item inside the playlist. Thi
             if track == current_song.get():                         # If the song selected is the same one that is playing, 
                 stop_song()                                         # Stop it first
                                                                
-            playlist.delete(playlist.curselection(), playlist.curselection())   # Then delete it from our GUI
-            playlist_URLs.remove(song)                                          # Delete it from our song paths
-            on_playlist_change(playlist_URLs)                                   # Save the changes to the json file
+    playlist.delete(playlist.curselection(), playlist.curselection())   # Then delete it from our GUI
+    playlist_URLs.remove(song)                                          # Delete it from our song paths
+    on_playlist_change(playlist_URLs)                                   # Save the changes to the json file
     
-
 # ----------------------------------------------- # FUNCTIONS - Music Controls # ----------------------------------------------- #
 def play_song():            
-    global current_song
-    global playlist
-    global status
-    global is_playing
-    global is_paused
-    global is_stopped
-    global autoplay
     global playlist_URLs
     global curr_song_name
     global song_length
@@ -169,7 +162,6 @@ def play_song():
             status.set("Playing")         # Updates "status_label"
             boolean_switch("play")        # Sets - > is_playing = True and everything else to False.
             play_button_check()           # Checks the boolean variables and changes the text of the "Play/Pause" button.
-            status_color_check()          # Checks the boolean variables and changes the color of the status label.
             song_has_ended_check()        # Checks every second if the song has ended
             playlist.selection_clear(0, END) # Stops the selection of the song we just started to play
             try:
@@ -179,26 +171,18 @@ def play_song():
                 print("\n[DEBUG]", e)
 
 def pause_song():
-    global status
-
     pygame.mixer.music.pause()
     status.set("Paused")        # Updates "status_label"
     boolean_switch("pause")     # Sets - > is_paused = True and everything else to False.
-    status_color_check()        # Checks the boolean variables and changes the color of the status label.
     play_button_check()         # Checks the boolean variables and changes the text of the "Play/Pause" button.
 
 def resume_song():
-    global status
-
     pygame.mixer.music.unpause()    
     status.set("Playing")       # Updates "status_label"
     boolean_switch("play")      # Sets - > is_playing = True and everything else to False.
-    status_color_check()        # Checks the boolean variables and changes the color of the status label.
     play_button_check()         # Checks the boolean variables and changes the text of the "Play/Pause" button.
 
 def stop_song():
-    global status
-    global current_song
     global curr_song_name
 
     pygame.mixer.music.stop()
@@ -207,66 +191,63 @@ def stop_song():
     curr_song_name = ""                     # Resetting the variable used by next_song() function.
     song_curr_pos.configure(text="0:00:00") # Resetting the GUI
     song_end_pos.configure(text="0:00:00")  # Resetting the GUI
+    music_pos_slider.set(0)                 # Resetting the GUI
     boolean_switch("stop")                  # Sets - > is_stopped = True and everything else to False.
-    status_color_check()                    # Checks the boolean variables and changes the color of the status label.
     play_button_check()                     # Checks the boolean variables and changes the text of the "Play/Pause" button.
 
 def previous_song():
     global playlist_URLs
-    global playlist
     global curr_song_name
-    global current_song
-
-    song_path = ""
 
     for track in playlist_URLs:                                             # Goes through every song in our song paths
         track_name, ext = os.path.splitext(os.path.basename(track))         # Get's only the name of the song, without the extension
         if track_name == current_song.get():                                # If the song name matches the current one that is playing / active
             prev_song_index = (playlist_URLs.index(track) - 1)              # playlist_URLs only holds the abspaths, that's why we use track variable here
-                                                                            # Only the song name here wouldn't work because it can't find the thing only by it's name.
-            
-            song_path = playlist_URLs[prev_song_index]                      # So we can pass it later to update_song_details
-            pygame.mixer.music.load(playlist_URLs[prev_song_index])         
-            pygame.mixer.music.play()
-            track_name, ext = os.path.splitext(os.path.basename(playlist_URLs[prev_song_index]))    # Getting only the song name here, without extension
-            current_song.set(track_name)                                                            # Updates "actual_song_lbl"
+            break
+
+    track_name, ext = os.path.splitext(os.path.basename(playlist_URLs[prev_song_index]))    # Getting only the song name here, without extension
     
-    update_song_details(song_path) # Updates both GUI elements and variables related to the song position.
+    current_song.set(track_name)       # Updates "actual_song_lbl"
+    curr_song_name = track_name        # Used by function next_song. Removing this line causes bugs                                                              
+
+    pygame.mixer.music.load(playlist_URLs[prev_song_index])         
+    pygame.mixer.music.play()
+    
+    update_song_details(playlist_URLs[prev_song_index]) # Updates both GUI elements and variables related to the song position slider.
+    
     status.set("Playing")          # Updates "status_label"
     boolean_switch("play")         # Sets - > is_playing = True and everything else to False.
     play_button_check()            # Checks the boolean variables and changes the text of the "Play/Pause" button.
-    status_color_check()           # Checks the boolean variables and changes the color of the status label.
     song_has_ended_check()         # Checks every second if the song has ended
     
 def next_song():
     global playlist_URLs
-    global playlist
     global curr_song_name
-    global current_song
-
-    song_path = ""
 
     for track in playlist_URLs:                                         # Goes through every song in our song paths
         track_name, ext = os.path.splitext(os.path.basename(track))     # Get's only the name of the song, without the extension
         if track_name == curr_song_name:                                # If the song name matches the current one that is playing / active
             next_song_index = (playlist_URLs.index(track) + 1)          # playlist_URLs only holds the abspaths, that's why we use track variable here
-                                                                        # Only the song name here wouldn't work because it can't find the thing only by it's name.
-            
-            song_path = playlist_URLs[next_song_index]                  # So we can pass it later to update_song_details
-            pygame.mixer.music.load(playlist_URLs[next_song_index])     
-            pygame.mixer.music.play()
+            break
+                                                                       
+    try:
+        playlist_URLs[next_song_index]                          # Checking if the next song exists. If it doesn't that means we are at the end of our playlist.
+    except IndexError:
+        next_song_index = 0                                     # So we need to go back and play the first song again
 
-            track_name, ext = os.path.splitext(os.path.basename(playlist_URLs[next_song_index]))  # Getting only the song name here, without extension
+    track_name, ext = os.path.splitext(os.path.basename(playlist_URLs[next_song_index]))  # Getting only the song name here, without extension
             
-            current_song.set(track_name)                                                          # Updates "actual_song_lbl"
+    current_song.set(track_name)                                                          # Updates "actual_song_lbl"
+    curr_song_name = track_name 
+                
+    pygame.mixer.music.load(playlist_URLs[next_song_index])     
+    pygame.mixer.music.play()
+
+    update_song_details(playlist_URLs[next_song_index])   # Updates both GUI elements and variables related to the song position slider.
     
-    curr_song_name = current_song.get()  # We don't use the variable track_name here because it breaks everything for some reason..
-            
-    update_song_details(song_path)   # Updates both GUI elements and variables related to the song position.
     status.set("Playing")            # Updates "status_label"
     boolean_switch("play")           # Sets - > is_playing = True and everything else to False.
     play_button_check()              # Checks the boolean variables and changes the text of the "Play/Pause" button.
-    status_color_check()             # Checks the boolean variables and changes the color of the status label.
     song_has_ended_check()           # Checks every second if the song has ended
 
 def play_event_doubleclick(event):   # Function to make the song start playing if the item is double-clicked in the ListBox.
@@ -274,11 +255,7 @@ def play_event_doubleclick(event):   # Function to make the song start playing i
     play_song()                      # ...so we can pass this function first checks
     playlist.selection_clear(0, END) # Finished doing everything above, unselects the item
 
-def song_has_ended_check():      # Function that checks if the song has ended, and, if autoplay is true, calls the autoplay function.
-    global current_song
-    global playlist
-    global status
-
+def song_has_ended_check():      # Function that checks if the song has ended, and, if autoplay is true, plays the next song.
     for event in pygame.event.get():
         if event.type == MUSIC_END and autoplay == False:  # If the music ends,
             stop_song()                                    # Updates our GUI labels and buttons
@@ -289,25 +266,18 @@ def song_has_ended_check():      # Function that checks if the song has ended, a
     window.after(1000, song_has_ended_check)                                        # Repeat this function every 1 second
 
 # ----------------------------------------------- # FUNCTIONS - GUI event handlers # ----------------------------------------------- #
-def update_volume(event):                               # Function to change the volume according to our volume slider in the GUI
-    global volume_slider                                # Also updates the v_label image
-
+def update_volume(event):                               # Function to change the volume according to our volume slider in the GUI                                                   
     pygame.mixer.music.set_volume(volume_slider.get())  # First gets the current value inside our tkinter slider then pass it to the pygame music volume function
+    
     if volume_slider.get() == 0:                        # If the volume slider value is 0
         volume_image.configure(image=volume_muted_png)  # Changes the volume image to the muted version
     else:
         volume_image.configure(image=volume_png)        # Resetting it to the default image
-
-def update_song_pos():       # Function to  update the slider position in the GUI according to our current song position.
-    global music_pos_slider  # Had to do a workaround because pygame get_pos() only represents how long the music has been playing; 
-    global song_curr_pos     # it does not take into account any starting position offsets. So, if the user changes it, get_pos stops working.
-    global song_end_pos
-    global is_playing
-    global is_paused
-    global is_stopped
-    global correct_song_pos
-    global song_length
-
+    
+def update_song_pos():        # Function to  update the slider position in the GUI according to our current song position.
+    global correct_song_pos   # Had to do a workaround because pygame get_pos() only represents how long the music has been playing; 
+                              # it does not take into account any starting position offsets. So, if the user changes it, get_pos stops working.
+    
     if is_paused or is_stopped:     # If the music is paused or stopped, doesn't update the slider.
         pass
     else:
@@ -322,13 +292,13 @@ def update_song_pos():       # Function to  update the slider position in the GU
         else:
             music_pos_slider.set(correct_song_pos)                # Setting the slider position according to correct_song_pos (it holds a value in seconds)
             
-            converted_to_time = convert(music_pos_slider.get())   # Converting seconds to "hours : minutes : seconds"
+            converted_to_time = convert(correct_song_pos)         # Converting seconds to "hours : minutes : seconds"
             
             song_curr_pos.configure(text=converted_to_time)       # Updating our GUI  
             
-            correct_song_pos += 1.0                               # Still trying to figure out this thing here... very broken still.           
+            correct_song_pos += 1.0     # Still trying to figure out this thing here... very broken still.           
 
-    window.after(1000, update_song_pos)               # Repeating everything above every 1 second.
+    window.after(1000, update_song_pos)          # Repeating everything above every 1 second.
 
 def set_song_pos(event):                         # Function to handle the event when the user clicks the slider
     global music_pos_slider                      # Changes the music position to the slider position that was clicked by the user
@@ -355,8 +325,6 @@ def update_song_details(song_path):  # Calls this function every time a new song
     music_pos_slider.set(0)
 
 def search_songs(event):         # Function to check the entry search bar vs all ListBox items, and show only what matches
-    global playlist
-    global song_search
     global playlist_URLs
 
     typed = song_search.get()    # Gets what we typed into the entrybox
@@ -373,41 +341,18 @@ def search_songs(event):         # Function to check the entry search bar vs all
             if typed.lower() in track.lower():                      # Checks if whats typed matches an item inside the playlist_URLs
                 playlist.insert(END, name)                          # If true, display it in our ListBox
 
-def status_color_check():   # Depending on the state of the bool variables, changes the status label color.
-    global is_playing       # This function could be easily merged with the one below..
-    global is_paused
-    global is_stopped
-    global status_label
-    global window
-
-    if is_playing == True:
-        status_label.configure(text_color="green")
+def play_button_check():    # Depending on the state of the bool variables, changes the play button label text.
+    if is_playing == True:                          # If a song is playing, 
+        play_button.configure(text="Pause")         # Changes the button from "Play" to "Pause"
+        status_label.configure(text_color="#6dd867")
         window.update()
-    elif is_paused == True:
+    elif is_paused == True:                         # If a song is paused, 
+        play_button.configure(text="Resume")        # Changes the button from "Pause" to "Resume"
         status_label.configure(text_color="yellow")
         window.update()
-    elif is_stopped == True:
+    elif is_stopped == True:                        # If a song is stopped, 
+        play_button.configure(text="Play")          # Changes the button to "Play"
         status_label.configure(text_color="red")
-        window.update()
-    else:
-        status_label.configure(text_color="white")
-        window.update()
-
-def play_button_check():    # Depending on the state of the bool variables, changes the play button label text.
-    global is_playing
-    global is_paused
-    global is_stopped
-    global window
-    global play_button
-
-    if is_playing == True:                   # If a song is playing, 
-        play_button.configure(text="Pause")  # Changes the button from "Play" to "Pause"
-        window.update()
-    elif is_paused == True:                  # If a song is paused, 
-        play_button.configure(text="Resume") # Changes the button from "Pause" to "Resume"
-        window.update()
-    elif is_stopped == True:                 # If a song is stopped, 
-        play_button.configure(text="Play")   # Changes the button to "Play"
         window.update()
 
 def boolean_switch(input):                  # Function that sets the main booleans to True or False depending on the input parameter.
@@ -444,10 +389,10 @@ def convert(seconds):                       # Function that converts an input (i
 
 # ------------------------------------------------------------- # SETTING UP VARIABLES # -------------------------------------------------------------#
 window = customtkinter.CTk()
-window.geometry("1100x540") #1000x660
+window.geometry("1100x540") 
 window.resizable(width=False,height=False)
 window.title("Yani")
-window.iconbitmap("resources\\images\\icon.ico")
+window.iconphoto(False, PhotoImage(file="resources/images/yani-logo.png"))
 
 pygame.init()                                           # Need this in order to be able catch pygame events
 pygame.mixer.init()
@@ -458,9 +403,10 @@ pygame.mixer.music.set_endevent(MUSIC_END)
 current_song = StringVar(window, value="")     # Used by our tkinter gui element named "actual_song_lbl"   > Shows the name of the current song being played.
 status = StringVar(window, "Stopped")          # Used by our tkinter gui element named "status_label"      > Playing | Paused | Stopped
 
-logo_img = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\yui-chan.png"),size=(70,70))
-volume_png = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\volume.png"), size=(30,30))
-volume_muted_png = customtkinter.CTkImage(dark_image=Image.open("resources\\images\\volume-mute.png"), size=(30,30))
+logo_img = customtkinter.CTkImage(dark_image=Image.open("resources/images/yani-logo.png"),size=(40,40))
+volume_png = customtkinter.CTkImage(dark_image=Image.open("resources/images/volume.png"), size=(30,30))
+volume_muted_png = customtkinter.CTkImage(dark_image=Image.open("resources/images/volume-mute.png"), size=(30,30))
+
 # ------------------------------------------------------------- # CREATING THE GUI WIDGETS # -------------------------------------------------------------#
 frame_1 = customtkinter.CTkFrame(window, width=300,height=485)                      # Home for all of our music control buttons
 frame_2 = customtkinter.CTkFrame(window, width=770,height=440,fg_color="#282828")   # Home for searchbar and playlist
@@ -497,8 +443,8 @@ fg_color="#2b23af")
 separator_4 = ttk.Separator(frame_1,orient=HORIZONTAL)
 
 separator_5 = ttk.Separator(frame_1,orient=HORIZONTAL)
-yui_img = customtkinter.CTkLabel(frame_1,text="",image=logo_img)
-yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="#1003e1",compound="left")
+app_logo = customtkinter.CTkLabel(frame_1,text="",image=logo_img)
+yani_label = customtkinter.CTkLabel(frame_1,text="Yani Music Player",font=("Courier New",19),text_color="#6dd867",compound="left")
 
 # FROM FRAME 2 --->
 song_search = customtkinter.CTkEntry(frame_2,placeholder_text="Search for a song",width=365,corner_radius=1,font=(custom_font, 11))
@@ -511,7 +457,7 @@ playlist_scroll_bar.configure(command=playlist.yview)
 
 # FROM FRAME 3 --->            
 current_song_label = customtkinter.CTkLabel(frame_3, text="CURRENTLY PLAYING:",font=("Rubik",12))
-actual_song_lbl = customtkinter.CTkLabel(frame_3, textvariable=current_song,font=("Rubik", 12),text_color="#1003e1")
+actual_song_lbl = customtkinter.CTkLabel(frame_3, textvariable=current_song,font=("Rubik", 12),text_color="#6dd867")
 
 # FROM FRAME 4 --->
 status_label = customtkinter.CTkLabel(frame_4,textvariable=status,font=(custom_font,15),text_color="red")
@@ -549,9 +495,9 @@ remove_all_button.place(x=155,y=130)              # displays - > "Remove All Son
 remove_single_button.place(x=155,y=165)           # displays - > "Remove A Single Song"
 separator_4.place(x=0,y=205,width=300,height=1)   # displays - > A horizontal line that separates elements
 
-separator_5.place(x=0,y=440,width=300,height=1)   # displays - > A horizontal line that separates elements
-yui_img.place(x=5,y=420)                          # displays - > An image of Yui-chan peeking at you
-yani_label.place(x=90,y=450)                      # displays - > "Yani Music Player"
+separator_5.place(x=0,y=430,width=300,height=1)   # displays - > A horizontal line that separates elements
+app_logo.place(x=20,y=440)                        # displays - > An image of the app's logo
+yani_label.place(x=80,y=450)                      # displays - > "Yani Music Player"
 
 # FROM FRAME 2 --->                               # Home for searchbar and playlist
 frame_2.pack_propagate(False)                                            
@@ -584,6 +530,11 @@ music_pos_slider.set(0)
 # ----------------------------------------------- # FUNCTIONS - Setting up things on the start # ----------------------------------------------- #
 on_program_start(playlist)  # This function will update ONLY the "playlist" variable - the one who holds control over the ListBox.
 playlist_URLs = get_urls()  # This one will get the updated paths from the other file to this one. Couldn't manage to do it in the above function
+pygame.mixer.music.set_volume(get_volume_from_cfg())    # Getting the user stored volume from the json file
+volume_slider.set(pygame.mixer.music.get_volume())      # Syncing the volume slider with this volume
+
+# Doing things when the program exits the normal way
+atexit.register(do_things_on_exit, volume_slider)
 
 # The End
 window.update()
